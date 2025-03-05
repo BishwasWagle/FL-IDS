@@ -27,9 +27,9 @@ def load_and_preprocess_data(file_path):
     df['Attack_type'] = df['Attack_type'].map(attacks)
     
     X = df.drop(columns=['Attack_label', 'Attack_type'])
-    y = df['Attack_label']
+    y = df['Attack_type']
     
-    return X, y
+    return X, y, attacks
 
 def feature_selection(X, y):
     """Select best features using Chi-Squared test."""
@@ -66,10 +66,10 @@ def cnn_lstm_gru_model(input_shape):
         Flatten(),
         Dense(128, activation='relu'),
         Dropout(0.5),
-        Dense(1, activation='sigmoid')
+        Dense(15, activation='softmax')
     ])
     
-    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     return model
 
 def train_and_evaluate(model, X_train, y_train, X_val, y_val, X_test, y_test):
@@ -98,7 +98,7 @@ def plot_metrics(history, state):
     plt.ylabel('Accuracy')
     plt.xlabel('Epoch')
     plt.legend(['Train', 'Test'], loc='upper left')
-    plt.savefig(f'../results/centralized/binary/{state}/accuracy_plot.jpg')
+    plt.savefig(f'../results/centralized/multiclass/{state}/accuracy_plot.jpg')
     plt.close()
     
     plt.figure()
@@ -108,39 +108,51 @@ def plot_metrics(history, state):
     plt.ylabel('Loss')
     plt.xlabel('Epoch')
     plt.legend(['Train', 'Test'], loc='upper left')
-    plt.savefig(f'../results/centralized/binary/{state}/loss_plot.jpg')
+    plt.savefig(f'../results/centralized/multiclass/{state}/loss_plot.jpg')
     plt.close()
 
-def evaluate_model(model, X_test, y_test, state):
+def evaluate_model(model, X_test, y_test, attacks, state):
     """Evaluate the model and generate a confusion matrix."""
     y_pred = model.predict(np.expand_dims(X_test, axis=2))
+    y_pred_classes = np.argmax(y_pred, axis=1)
+    inverse_attacks = {v: k for k, v in attacks.items()}
     if state == 'test':
-        y_pred_binary = (y_pred > 0.5).astype(int)
-        print(classification_report(y_test, y_pred_binary, target_names=['No Intrusion', 'Intrusion']))
-        
-        conf_mat = confusion_matrix(y_test, y_pred_binary)
+        unique_classes = np.unique(y_pred_classes)
+        class_names_ordered = [inverse_attacks[i] for i in unique_classes]
+        print(classification_report(y_test, y_pred_classes, target_names=class_names_ordered))
+        conf_mat = confusion_matrix(y_test, y_pred_classes)
     else:
-        print(classification_report(y_test, np.round(y_pred), target_names=['No Intrusion', 'Intrusion']))
-        conf_mat = confusion_matrix(y_test, np.round(y_pred))
-    sns.heatmap(conf_mat, annot=True, fmt='d', cmap='Blues', xticklabels=['No Intrusion', 'Intrusion'], yticklabels=['No Intrusion', 'Intrusion'])
+        class_names_ordered = [attack for attack, number in sorted(attacks.items(), key=lambda item: item[1])]
+        print(classification_report(y_test, y_pred_classes, target_names=class_names_ordered))
+        conf_mat = confusion_matrix(y_test, y_pred_classes)
+    plt.figure(figsize=(15, 10))
+    sns.heatmap(
+        conf_mat, annot=True, fmt='d', cmap='Blues',
+        xticklabels=class_names_ordered,
+        yticklabels=class_names_ordered
+        )
     plt.xlabel('Predicted Label')
     plt.ylabel('True Label')
     plt.title('Confusion Matrix')
-    plt.savefig(f'../results/centralized/binary/{state}/confusion_matrix.jpg')
+    plt.savefig(f'../results/centralized/multiclass/{state}/confusion_matrix.jpg')
     plt.close()
 
     cm_norm = conf_mat.astype('float') / conf_mat.sum(axis=1)[:, np.newaxis]
 
-    # Step 5: Plot the normalized confusion matrix as percentages
-    plt.figure(figsize=(6, 5))
-    sns.heatmap(cm_norm, annot=True, cmap='Blues', xticklabels=['No Intrusion', 'Intrusion'], yticklabels=['No Intrusion', 'Intrusion'], fmt='.2%')
+    plt.figure(figsize=(15, 10))
+    sns.heatmap(
+        cm_norm, annot=True, cmap='Blues',
+        xticklabels=class_names_ordered,
+        yticklabels=class_names_ordered,
+        fmt='.2%'
+    )
 
     # Set the plot labels and title for the normalized confusion matrix
     plt.xlabel('Predicted Labels')
     plt.ylabel('True Labels')
     plt.title('Normalized Confusion Matrix (Percentages)')
     # Optional: Save the normalized confusion matrix plot
-    plt.savefig(f'../results/centralized/binary/{state}/normalized_confusion_matrix.jpg')
+    plt.savefig(f'../results/centralized/multiclass/{state}/normalized_confusion_matrix.jpg')
     plt.close()
 
 def load_and_preprocess_test_data(file_path, intended_columns, selected_features):
@@ -159,7 +171,7 @@ def load_and_preprocess_test_data(file_path, intended_columns, selected_features
 def main():
     """Main execution function."""
     file_path = 'datasets/50000_5000_IOT112andAllfields_Preprocessed.csv'
-    X, y = load_and_preprocess_data(file_path)
+    X, y, attacks = load_and_preprocess_data(file_path)
     selected_features = feature_selection(X, y)
     X_train, X_val, X_test, y_train, y_val, y_test, scaler = prepare_data(X, y, selected_features)
     
@@ -170,7 +182,7 @@ def main():
     
     history, model = train_and_evaluate(model, X_train, y_train, X_val, y_val, X_test, y_test)
     plot_metrics(history, 'train')
-    evaluate_model(model, X_test, y_test, 'train')
+    evaluate_model(model, X_test, y_test, attacks, 'train')
     
     model.save('cnn_lstm_gru_model_binary_working.h5')
 
@@ -178,9 +190,9 @@ def main():
     test_file_path = 'datasets/Preprocessed_validation_all_fields.csv'
     test_df = load_and_preprocess_test_data(test_file_path, selected_features, selected_features)
     X_test_scaled = scaler.transform(test_df)
-    test_df['Attack_label'] = 1
-    y_test = test_df['Attack_label']
-    evaluate_model(model, X_test_scaled, y_test, 'test')
+    test_df['Attack_type'] = 6
+    y_test = test_df['Attack_type']
+    evaluate_model(model, X_test_scaled, y_test, attacks, 'test')
 
 if __name__ == "__main__":
     main()
