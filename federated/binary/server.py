@@ -167,14 +167,6 @@ def get_evaluate_fn(model, X_test, y_test):
         model.set_weights(parameters)
         loss, accuracy = model.evaluate(X_test, y_test, batch_size=32)
         f1 = f1_score(y_test, np.argmax(model.predict(X_test), axis=1), average='weighted')
-
-        if "high_intrusion" in config and config["high_intrusion"]:
-            print(f"Client reported high intrusion. Reassigning client.")
-            # Implement logic to reassign the client to a different node
-            # This part depends on your infrastructure
-            # For example, you might have a pool of available nodes and a mechanism to reassign clients
-            # reassign_client_to_different_node(client_id)
-
         return loss, {"accuracy": accuracy, "f1-score": f1}
     
     return evaluate
@@ -187,20 +179,15 @@ class CustomFedAvg(fl.server.strategy.FedAvg):
     def aggregate_evaluate(self, rnd, results, failures):
         """Filter out clients where intrusion detection rate > 70%"""
         print(rnd, results, failures)
-
-        self.new_results = []  # Ensure new_results is initialized
-        self.bad_clients = []  # Ensure bad_clients is initialized
-
         for client, eval_res in results:  # Unpack properly
             metrics = eval_res.metrics  # Extract metrics from EvaluateRes
 
             if metrics.get("high_intrusion", False):  # Safely get the boolean value
+                # self.new_results.append((eval_res.parameters, eval_res.num_examples, metrics))
                 self.bad_clients.append(client.cid)
                 print(f"⚠️ Client {client.cid} exceeds 70% intrusion detection. Removing from next rounds.")
             else:
-                self.new_results.append((eval_res.parameters, eval_res.num_examples, metrics))
-        print(self.new_results)
-        print(self.bad_clients)
+                self.new_results.append((client, eval_res))  
 
         return super().aggregate_evaluate(rnd, self.new_results, failures)
 
@@ -208,7 +195,6 @@ class CustomFedAvg(fl.server.strategy.FedAvg):
         """Modify client selection to exclude flagged clients"""
         clients = client_manager.sample(num_clients=3)  # Sample 5 clients
         available_clients = [c for c in clients if c.cid not in self.bad_clients]
-
         fit_ins = FitIns(Parameters(tensors=parameters.tensors, tensor_type="numpy"), {})
         
         return [(client, fit_ins) for client in available_clients]  # Correct format
@@ -228,14 +214,9 @@ def start_federated_learning_server(args, model, X_test, y_test):
     min_fit_clients=2,
     min_evaluate_clients=2,
     min_available_clients=2,
+    evaluate_fn=get_evaluate_fn(model, X_test, y_test),
+    on_fit_config_fn=fit_round,
 )
-#     strategy = CustomFedAvg(
-#     min_evaluate_clients=3,
-#     evaluate_fn=get_evaluate_fn(model, X_test, y_test),
-#     on_fit_config_fn=fit_round,
-# )
-    
-    
     fl.server.start_server(
         server_address=f"{args.address}:{args.port}",
         strategy=strategy,
