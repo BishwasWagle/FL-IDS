@@ -72,8 +72,8 @@ def load_and_preprocess_data(dataset_dir):
     selected_features = chi_scores['feature'].tolist()
     
     # Split data into training and testing sets
-    train_set = df[selected_features + ['Attack_label', 'Attack_type']][:30000]
-    test_set = df[selected_features + ['Attack_label', 'Attack_type']][30000:]
+    train_set = df[selected_features + ['Attack_label', 'Attack_type']]
+    test_set = df[selected_features + ['Attack_label', 'Attack_type']][50000:]
     directory = os.path.join('../federated_datasets')
     try:
         os.makedirs(directory)
@@ -167,14 +167,6 @@ def get_evaluate_fn(model, X_test, y_test):
         model.set_weights(parameters)
         loss, accuracy = model.evaluate(X_test, y_test, batch_size=32)
         f1 = f1_score(y_test, np.argmax(model.predict(X_test), axis=1), average='weighted')
-
-        if "high_intrusion" in config and config["high_intrusion"]:
-            print(f"Client reported high intrusion. Reassigning client.")
-            # Implement logic to reassign the client to a different node
-            # This part depends on your infrastructure
-            # For example, you might have a pool of available nodes and a mechanism to reassign clients
-            # reassign_client_to_different_node(client_id)
-
         return loss, {"accuracy": accuracy, "f1-score": f1}
     
     return evaluate
@@ -187,20 +179,15 @@ class CustomFedAvg(fl.server.strategy.FedAvg):
     def aggregate_evaluate(self, rnd, results, failures):
         """Filter out clients where intrusion detection rate > 70%"""
         print(rnd, results, failures)
-
-        self.new_results = []  # Ensure new_results is initialized
-        self.bad_clients = []  # Ensure bad_clients is initialized
-
         for client, eval_res in results:  # Unpack properly
             metrics = eval_res.metrics  # Extract metrics from EvaluateRes
 
             if metrics.get("high_intrusion", False):  # Safely get the boolean value
+                # self.new_results.append((eval_res.parameters, eval_res.num_examples, metrics))
                 self.bad_clients.append(client.cid)
                 print(f"⚠️ Client {client.cid} exceeds 70% intrusion detection. Removing from next rounds.")
             else:
-                self.new_results.append((eval_res.parameters, eval_res.num_examples, metrics))
-        print(self.new_results)
-        print(self.bad_clients)
+                self.new_results.append((client, eval_res))  
 
         return super().aggregate_evaluate(rnd, self.new_results, failures)
 
@@ -208,7 +195,6 @@ class CustomFedAvg(fl.server.strategy.FedAvg):
         """Modify client selection to exclude flagged clients"""
         clients = client_manager.sample(num_clients=3)  # Sample 5 clients
         available_clients = [c for c in clients if c.cid not in self.bad_clients]
-
         fit_ins = FitIns(Parameters(tensors=parameters.tensors, tensor_type="numpy"), {})
         
         return [(client, fit_ins) for client in available_clients]  # Correct format
@@ -228,14 +214,9 @@ def start_federated_learning_server(args, model, X_test, y_test):
     min_fit_clients=2,
     min_evaluate_clients=2,
     min_available_clients=2,
+    evaluate_fn=get_evaluate_fn(model, X_test, y_test),
+    on_fit_config_fn=fit_round,
 )
-#     strategy = CustomFedAvg(
-#     min_evaluate_clients=3,
-#     evaluate_fn=get_evaluate_fn(model, X_test, y_test),
-#     on_fit_config_fn=fit_round,
-# )
-    
-    
     fl.server.start_server(
         server_address=f"{args.address}:{args.port}",
         strategy=strategy,
@@ -277,3 +258,68 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# /Applications/Wireshark.app/Contents/MacOS/tshark -r during_attack.pcap -c 100000 -T fields \
+#   -e frame.time \
+#   -e ip.src \
+#   -e ip.dst \
+#   -e arp.dst.proto_ipv4 \
+#   -e arp.opcode \
+#   -e arp.hw.size \
+#   -e arp.src.proto_ipv4 \
+#   -e icmp.checksum \
+#   -e icmp.seq_le \
+#   -e icmp.transmit_timestamp \
+#   -e icmp.unused \
+#   -e http.file_data \
+#   -e http.content_length \
+#   -e http.request.uri.query \
+#   -e http.request.method \
+#   -e http.referer \
+#   -e http.request.full_uri \
+#   -e http.request.version \
+#   -e http.response \
+#   -e http.tls_port \
+#   -e tcp.ack \
+#   -e tcp.ack_raw \
+#   -e tcp.checksum \
+#   -e tcp.connection.fin \
+#   -e tcp.connection.rst \
+#   -e tcp.connection.syn \
+#   -e tcp.connection.synack \
+#   -e tcp.dstport \
+#   -e tcp.flags \
+#   -e tcp.flags.ack \
+#   -e tcp.len \
+#   -e tcp.options \
+#   -e tcp.payload \
+#   -e tcp.seq \
+#   -e tcp.srcport \
+#   -e udp.port \
+#   -e udp.stream \
+#   -e udp.time_delta \
+#   -e dns.qry.name \
+#   -e dns.qry.name.len \
+#   -e dns.qry.qu \
+#   -e dns.qry.type \
+#   -e dns.retransmission \
+#   -e dns.retransmit_request \
+#   -e dns.retransmit_request_in \
+#   -e mqtt.conack.flags \
+#   -e mqtt.conflag.cleansess \
+#   -e mqtt.conflags \
+#   -e mqtt.hdrflags \
+#   -e mqtt.len \
+#   -e mqtt.msg_decoded_as \
+#   -e mqtt.msg \
+#   -e mqtt.msgtype \
+#   -e mqtt.proto_len \
+#   -e mqtt.protoname \
+#   -e mqtt.topic \
+#   -e mqtt.topic_len \
+#   -e mqtt.ver \
+#   -e mbtcp.len \
+#   -e mbtcp.trans_id \
+#   -e mbtcp.unit_id \
+#   -E header=y -E separator=, -E quote=d > custom_attack.csv
