@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument("-a", "--address", help="IP address", default="0.0.0.0")
     parser.add_argument("-p", "--port", help="Serving port", default=8000, type=int)
     parser.add_argument("-r", "--rounds", help="Number of training and aggregation rounds", default=3, type=int)
-    parser.add_argument("-d", "--dataset", help="dataset directory", default="federated_datasets/")
+    parser.add_argument("-d", "--dataset", help="dataset directory", default="../federated_datasets/")
     return parser.parse_args()
 
 
@@ -71,8 +71,8 @@ def load_and_preprocess_data(dataset_dir):
     selected_features = chi_scores['feature'].tolist()
     
     # Split data into training and testing sets
-    train_set = df[selected_features + ['Attack_label', 'Attack_type']][:30000]
-    test_set = df[selected_features + ['Attack_label', 'Attack_type']][30000:]
+    train_set = df[selected_features + ['Attack_label', 'Attack_type']]
+    test_set = df[selected_features + ['Attack_label', 'Attack_type']][50000:]
     directory = os.path.join('federated_datasets')
     try:
         os.makedirs(directory)

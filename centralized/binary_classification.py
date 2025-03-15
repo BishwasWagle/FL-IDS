@@ -17,7 +17,7 @@ from tensorflow.keras.models import load_model
 def load_and_preprocess_data(file_path):
     """Load dataset and preprocess it by mapping attack types and selecting features."""
     df = pd.read_csv(file_path, low_memory=False)
-    df.drop(columns=['Unnamed: 0'], inplace=True)
+    # df.drop(columns=['Unnamed: 0'], inplace=True)
     
     # Mapping attack types to numerical labels
     attacks = {'Normal': 0, 'MITM': 1, 'Uploading': 2, 'Ransomware': 3, 'SQL_injection': 4,
@@ -158,7 +158,9 @@ def load_and_preprocess_test_data(file_path, intended_columns, selected_features
 
 def main():
     """Main execution function."""
-    file_path = 'datasets/50000_5000_IOT112andAllfields_Preprocessed.csv'
+    # file_path = 'datasets/50000_5000_IOT112andAllfields_Preprocessed.csv'
+    file_path = 'datasets/Edge-IIotset-12-filtered-DDos-TCP.csv'
+
     X, y = load_and_preprocess_data(file_path)
     selected_features = feature_selection(X, y)
     X_train, X_val, X_test, y_train, y_val, y_test, scaler = prepare_data(X, y, selected_features)

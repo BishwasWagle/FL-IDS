@@ -38,6 +38,28 @@ def cnn_lstm_gru_model(input_shape, num_classes):
     model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     return model
 
+def plot_metrics(history, state):
+    """Plot training and validation accuracy and loss."""
+    plt.figure()
+    plt.plot(history.history['accuracy'])
+    plt.plot(history.history['val_accuracy'])
+    plt.title('Model Accuracy')
+    plt.ylabel('Accuracy')
+    plt.xlabel('Epoch')
+    plt.legend(['Train', 'Test'], loc='upper left')
+    plt.savefig(f'../../results/federated/binary/accuracy_plot_{state}.jpg')
+    plt.close()
+    
+    plt.figure()
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('Model Loss')
+    plt.ylabel('Loss')
+    plt.xlabel('Epoch')
+    plt.legend(['Train', 'Test'], loc='upper left')
+    plt.savefig(f'../../results/federated/binary/loss_plot_{state}.jpg')
+    plt.close()
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Flower straggler / client implementation')
     parser.add_argument("-a", "--address", help="Aggregator server's IP address", default="127.0.0.1")
@@ -84,7 +106,8 @@ if __name__ == "__main__":
         def fit(self, parameters, config):
             model.set_weights(parameters)
             train_start_time = time.time()
-            history = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=2, batch_size=32)
+            history = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=6, batch_size=32)
+            plot_metrics(history, args.id)
             train_end_time = time.time()
             print(f"Training time: {train_end_time - train_start_time:.2f} seconds")
             return model.get_weights(), len(X_train), {}
