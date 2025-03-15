@@ -1,1 +1,4 @@
 .DS_Store
+results/
+custom_attack.csv
+during_attack.pcap
