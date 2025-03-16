@@ -3,3 +3,7 @@ results/
 custom_attack.csv
 during_attack.pcap
 Edge-IIotset-12-filtered-DDos-TCP.csv
+centralized/datasets/
+federated/federated_datasets/
+
+

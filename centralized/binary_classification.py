@@ -17,7 +17,8 @@ from tensorflow.keras.models import load_model
 def load_and_preprocess_data(file_path):
     """Load dataset and preprocess it by mapping attack types and selecting features."""
     df = pd.read_csv(file_path, low_memory=False)
-    # df.drop(columns=['Unnamed: 0'], inplace=True)
+    df.drop(columns=['Unnamed: 0'], inplace=True)
+    # df = df.iloc[:, 2:].reset_index(drop=True)
     
     # Mapping attack types to numerical labels
     attacks = {'Normal': 0, 'MITM': 1, 'Uploading': 2, 'Ransomware': 3, 'SQL_injection': 4,
@@ -75,7 +76,7 @@ def cnn_lstm_gru_model(input_shape):
 def train_and_evaluate(model, X_train, y_train, X_val, y_val, X_test, y_test):
     """Train the model and evaluate its performance."""
     start_time = time.time()
-    history = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=2, batch_size=32)
+    history = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=6, batch_size=32)
     train_time = time.time() - start_time
     
     start_time = time.time()
@@ -159,7 +160,7 @@ def load_and_preprocess_test_data(file_path, intended_columns, selected_features
 def main():
     """Main execution function."""
     # file_path = 'datasets/50000_5000_IOT112andAllfields_Preprocessed.csv'
-    file_path = 'datasets/Edge-IIotset-12-filtered-DDos-TCP.csv'
+    file_path = 'datasets/combined_edgeIIot_500k_custom_DDos.csv'
 
     X, y = load_and_preprocess_data(file_path)
     selected_features = feature_selection(X, y)
@@ -177,7 +178,7 @@ def main():
     model.save('cnn_lstm_gru_model_binary_working.h5')
 
     # Test with attack datasets 
-    test_file_path = 'datasets/Preprocessed_validation_all_fields.csv'
+    test_file_path = 'datasets/validation_edgeIIot_500k_custom_DDos.csv'
     test_df = load_and_preprocess_test_data(test_file_path, selected_features, selected_features)
     X_test_scaled = scaler.transform(test_df)
     test_df['Attack_label'] = 1
