@@ -111,6 +111,7 @@ if __name__ == "__main__":
             model.set_weights(parameters)
             train_start_time = time.time()
             history = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=6, batch_size=32)
+            plot_metrics(history, args.id)
             train_end_time = time.time()
             print(f"Training time: {train_end_time - train_start_time:.2f} seconds")
             return model.get_weights(), len(X_train), {}
@@ -139,6 +140,9 @@ if __name__ == "__main__":
             print(y_pred_classes)
             class_names_ordered = [attack for attack, number in sorted(attacks.items(), key=lambda item: item[1])]
             print(class_names_ordered)
+            print(classification_report(y_test, y_pred_classes, target_names=class_names_ordered))
+
+
 
             cm = confusion_matrix(y_test, y_pred_classes)
 

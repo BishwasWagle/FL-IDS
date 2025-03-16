@@ -46,7 +46,7 @@ def validate_args(args):
 
 # Load and preprocess the dataset
 def load_and_preprocess_data(dataset_dir):
-    df = pd.read_csv(os.path.join(dataset_dir, '50000_5000_IOT112andAllfields_Preprocessed.csv'), low_memory=False)
+    df = pd.read_csv(os.path.join(dataset_dir, 'combined_edgeIIot_500k_custom_DDos.csv'), low_memory=False)
     df.drop(columns=['Unnamed: 0'], inplace=True)
     
     # Map attack types to numeric labels
@@ -72,7 +72,7 @@ def load_and_preprocess_data(dataset_dir):
     
     # Split data into training and testing sets
     train_set = df[selected_features + ['Attack_label', 'Attack_type']]
-    test_set = df[selected_features + ['Attack_label', 'Attack_type']][50000:]
+    test_set = df[selected_features + ['Attack_label', 'Attack_type']][500000:]
     directory = os.path.join('federated_datasets')
     try:
         os.makedirs(directory)
