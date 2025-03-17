@@ -119,45 +119,46 @@ if __name__ == "__main__":
         def evaluate(self, parameters: fl.common.NDArrays, config: Dict[str, fl.common.Scalar]):
             model.set_weights(parameters)
             test_start_time = time.time()
-            loss, accuracy = model.evaluate(X_test, y_test, batch_size=32)
 
-            y_pred = model.predict(np.expand_dims(X_test, axis=2))
+            # Ensure the same column order as X_train
+            X_test = df_test.drop(columns=['Attack_label', 'Attack_type'])
+            y_test = df_test['Attack_label']
+            X_train = df_train.drop(columns=['Attack_label', 'Attack_type'])
+            
+            # Ensure the same feature columns are in X_test as in X_train
+            X_test = X_test[X_train.columns]  
+            X_test = scaler.transform(X_test)  # Transform using the same scaler fitted on X_train
+
+            # Model evaluation
+            loss, accuracy = model.evaluate(X_test, y_test, batch_size=32)
+            
+            # Predict the classes
+            y_pred = model.predict(np.expand_dims(X_test, axis=2))  # No need to expand dims unless necessary
             y_pred_classes = np.argmax(y_pred, axis=1)
-        
+            
+            # Calculate F1 score
             f1 = f1_score(y_test, y_pred_classes, average='weighted')
             test_end_time = time.time()
             print(f"Testing time: {test_end_time - test_start_time:.2f} seconds")
-            # print(classification_report(y_test, np.round(y_pred), target_names=['No Intrusion', 'Intrusion']))
-            # conf_mat = confusion_matrix(y_test, np.round(y_pred))
-            
-            inverse_attacks = {v: k for k, v in attacks.items()}
 
-            # if state == 'test':
+            # Confusion matrix
+            inverse_attacks = {v: k for k, v in attacks.items()}
             unique_classes = np.unique(y_pred_classes)
             class_names_ordered = [inverse_attacks[i] for i in unique_classes]
-            print(unique_classes,"^^^^^^^^^^^^^^^")
-            print(class_names_ordered, "&&&&&&&&&&&&&")
-            print(y_pred_classes)
-            class_names_ordered = [attack for attack, number in sorted(attacks.items(), key=lambda item: item[1])]
-            print(class_names_ordered)
-            print(classification_report(y_test, y_pred_classes, target_names=class_names_ordered))
-
-
-
+            
             cm = confusion_matrix(y_test, y_pred_classes)
+            print(cm)
 
+            # Plot confusion matrix
             plt.figure(figsize=(15, 10))
-            sns.heatmap(
-                cm, annot=True, fmt='d', cmap='Blues',
-                xticklabels=class_names_ordered,
-                yticklabels=class_names_ordered
-                )
+            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=class_names_ordered, yticklabels=class_names_ordered)
             plt.xlabel('Predicted Label')
             plt.ylabel('True Label')
             plt.title('Confusion Matrix')
             plt.savefig(f'../../results/federated/multiclass/confusion_matrix_{args.id}.jpg')
             plt.close()
 
+            # Normalized confusion matrix
             cm_norm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
             plt.figure(figsize=(15, 10))
             sns.heatmap(cm_norm, annot=True, cmap='Blues', xticklabels=class_names_ordered, yticklabels=class_names_ordered, fmt='.2%')
@@ -166,7 +167,7 @@ if __name__ == "__main__":
             plt.title('Normalized Confusion Matrix as Percentages')
             plt.savefig(f'../../results/federated/multiclass/con_percent_client{args.id}.jpg')
             plt.close()
-            
+
             return loss, len(X_test), {"accuracy": accuracy, "f1_score": f1}
     
     fl.client.start_numpy_client(server_address=f"{args.address}:{args.port}", client=Client())

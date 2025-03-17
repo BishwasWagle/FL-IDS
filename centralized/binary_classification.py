@@ -159,8 +159,8 @@ def load_and_preprocess_test_data(file_path, intended_columns, selected_features
 
 def main():
     """Main execution function."""
-    # file_path = 'datasets/50000_5000_IOT112andAllfields_Preprocessed.csv'
-    file_path = 'datasets/combined_edgeIIot_500k_custom_DDos.csv'
+    file_path = 'datasets/50000_5000_IOT112andAllfields_Preprocessed.csv'
+    # file_path = 'datasets/combined_edgeIIot_500k_custom_DDos.csv'
 
     X, y = load_and_preprocess_data(file_path)
     selected_features = feature_selection(X, y)
@@ -178,7 +178,8 @@ def main():
     model.save('cnn_lstm_gru_model_binary_working.h5')
 
     # Test with attack datasets 
-    test_file_path = 'datasets/validation_edgeIIot_500k_custom_DDos.csv'
+    # test_file_path = 'datasets/validation_edgeIIot_500k_custom_DDos.csv'
+    test_file_path = 'datasets/Preprocessed_validation_all_fields.csv'
     test_df = load_and_preprocess_test_data(test_file_path, selected_features, selected_features)
     X_test_scaled = scaler.transform(test_df)
     test_df['Attack_label'] = 1

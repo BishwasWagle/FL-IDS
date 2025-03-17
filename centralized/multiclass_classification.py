@@ -170,7 +170,8 @@ def load_and_preprocess_test_data(file_path, intended_columns, selected_features
 
 def main():
     """Main execution function."""
-    file_path = 'datasets/combined_edgeIIot_500k_custom_DDos.csv'
+    # file_path = 'datasets/combined_edgeIIot_500k_custom_DDos.csv'
+    file_path = 'datasets/50000_5000_IOT112andAllfields_Preprocessed.csv'
     X, y, attacks = load_and_preprocess_data(file_path)
     selected_features = feature_selection(X, y)
     X_train, X_val, X_test, y_train, y_val, y_test, scaler = prepare_data(X, y, selected_features)
