@@ -115,6 +115,9 @@ if __name__ == "__main__":
         def evaluate(self, parameters: fl.common.NDArrays, config: Dict[str, fl.common.Scalar]):
             model.set_weights(parameters)
             test_start_time = time.time()
+            X_test = df_test.drop(columns=['Attack_label', 'Attack_type'])
+            y_test = df_test['Attack_label']
+            X_test = scaler.transform(X_test)
             loss, accuracy = model.evaluate(X_test, y_test, batch_size=32)
             y_pred = model.predict(X_test)
             f1 = f1_score(y_test, np.round(y_pred), average='weighted')
@@ -122,7 +125,6 @@ if __name__ == "__main__":
             print(f"Testing time: {test_end_time - test_start_time:.2f} seconds")
             print(classification_report(y_test, np.round(y_pred), target_names=['No Intrusion', 'Intrusion']))
             conf_mat = confusion_matrix(y_test, np.round(y_pred))
-            
             class_labels = ['No Intrusion', 'Intrusion']
             sns.heatmap(conf_mat, annot=True, fmt='d', cmap='Blues', xticklabels=class_labels, yticklabels=class_labels)
             plt.xlabel('Predicted Label')
@@ -131,11 +133,7 @@ if __name__ == "__main__":
             plt.savefig(f'../../results/federated/binary/con_max_client{args.id}.jpg')
             plt.close()
 
-			# Predict the test set
-            y_pred = (y_pred > 0.5)
-			# Compute confusion matrix
-            cm = confusion_matrix(y_test, y_pred)
-            cm_norm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+            cm_norm = conf_mat.astype('float') / conf_mat.sum(axis=1)[:, np.newaxis]
             plt.figure(figsize=(8, 6))
             sns.heatmap(cm_norm, annot=True, cmap='Blues', xticklabels=class_labels, yticklabels=class_labels, fmt='.2%')
             plt.xlabel('Predicted labels')
