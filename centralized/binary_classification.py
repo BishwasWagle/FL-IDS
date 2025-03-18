@@ -179,7 +179,9 @@ def main():
 
     # Test with attack datasets 
     # test_file_path = 'datasets/validation_edgeIIot_500k_custom_DDos.csv'
-    test_file_path = 'datasets/Preprocessed_validation_all_fields.csv'
+    # test_file_path = 'datasets/Preprocessed_validation_all_fields.csv'
+    test_file_path = 'datasets/sql_injection_attack_testable.csv'
+
     test_df = load_and_preprocess_test_data(test_file_path, selected_features, selected_features)
     X_test_scaled = scaler.transform(test_df)
     test_df['Attack_label'] = 1
