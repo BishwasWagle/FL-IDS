@@ -6,4 +6,9 @@ Edge-IIotset-12-filtered-DDos-TCP.csv
 centralized/datasets/
 federated/federated_datasets/
 *.csv
+*.txt
+*.pdf
+*.png
+app/
+
 

@@ -81,7 +81,7 @@ if __name__ == "__main__":
 
     # Load train and test data
     df_train = pd.read_csv(os.path.join(args.dataset, f'client_train_data_{args.id}.csv'))
-    df_test = pd.read_csv(os.path.join(args.dataset, 'test_data.csv'))
+    df_test = pd.read_csv(os.path.join(args.dataset, 'Preprocessed_prediction_sql_injection.csv'))
 
     X = df_train.drop(columns=['Attack_label', 'Attack_type'])
     y = df_train['Attack_label']
@@ -115,15 +115,19 @@ if __name__ == "__main__":
         def evaluate(self, parameters: fl.common.NDArrays, config: Dict[str, fl.common.Scalar]):
             model.set_weights(parameters)
             test_start_time = time.time()
-            X_test = df_test.drop(columns=['Attack_label', 'Attack_type'])
+            df_test.drop(columns=['Unnamed: 0'], inplace=True)
+        
             y_test = df_test['Attack_label']
+            X_test = df_test.drop(columns=['Attack_label', 'Attack_type'])
+            X_train = df_train.drop(columns=['Attack_label', 'Attack_type'])
+            X_test = X_test[X_train.columns]  
             X_test = scaler.transform(X_test)
             loss, accuracy = model.evaluate(X_test, y_test, batch_size=32)
             y_pred = model.predict(X_test)
             f1 = f1_score(y_test, np.round(y_pred), average='weighted')
             test_end_time = time.time()
             print(f"Testing time: {test_end_time - test_start_time:.2f} seconds")
-            print(classification_report(y_test, np.round(y_pred), target_names=['No Intrusion', 'Intrusion']))
+            # print(classification_report(y_test, np.round(y_pred), target_names=['No Intrusion', 'Intrusion']))
             conf_mat = confusion_matrix(y_test, np.round(y_pred))
             class_labels = ['No Intrusion', 'Intrusion']
             sns.heatmap(conf_mat, annot=True, fmt='d', cmap='Blues', xticklabels=class_labels, yticklabels=class_labels)

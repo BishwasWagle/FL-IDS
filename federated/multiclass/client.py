@@ -81,7 +81,9 @@ if __name__ == "__main__":
 
     # Load train and test data
     df_train = pd.read_csv(os.path.join(args.dataset, f'client_train_data_{args.id}.csv'))
-    df_test = pd.read_csv(os.path.join(args.dataset, 'test_data.csv'))
+    
+    df_test = pd.read_csv(os.path.join(args.dataset, 'Preprocessed_prediction_sql_injection.csv'))
+    # df_test = pd.read_csv('../federated_datasets/final_ddos_tcp_attack.csv', low_memory=False)
 
     X = df_train.drop(columns=['Attack_label', 'Attack_type'])
     y = df_train['Attack_type']
@@ -119,10 +121,18 @@ if __name__ == "__main__":
         def evaluate(self, parameters: fl.common.NDArrays, config: Dict[str, fl.common.Scalar]):
             model.set_weights(parameters)
             test_start_time = time.time()
+            # df_test.drop(columns=['Unnamed: 0'], inplace=True)
 
             # Ensure the same column order as X_train
             X_test = df_test.drop(columns=['Attack_label', 'Attack_type'])
-            y_test = df_test['Attack_label']
+            # df_test['Attack_label'] = 6
+            attacks = {'Normal': 0, 'MITM': 1, 'Uploading': 2, 'Ransomware': 3, 'SQL_injection': 4,
+               'DDoS_HTTP': 5, 'DDoS_TCP': 6, 'Password': 7, 'Port_Scanning': 8,
+               'Vulnerability_scanner': 9, 'Backdoor': 10, 'XSS': 11, 'Fingerprinting': 12,
+               'DDoS_UDP': 13, 'DDoS_ICMP': 14}
+    
+            df_test['Attack_type'] = df_test['Attack_type'].map(attacks)
+            y_test = df_test['Attack_type']
             X_train = df_train.drop(columns=['Attack_label', 'Attack_type'])
             
             # Ensure the same feature columns are in X_test as in X_train
@@ -145,7 +155,7 @@ if __name__ == "__main__":
             inverse_attacks = {v: k for k, v in attacks.items()}
             unique_classes = np.unique(y_pred_classes)
             class_names_ordered = [inverse_attacks[i] for i in unique_classes]
-            
+            print(unique_classes, class_names_ordered)
             cm = confusion_matrix(y_test, y_pred_classes)
             print(cm)
 

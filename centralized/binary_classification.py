@@ -117,7 +117,7 @@ def evaluate_model(model, X_test, y_test, state):
     y_pred = model.predict(np.expand_dims(X_test, axis=2))
     if state == 'test':
         y_pred_binary = (y_pred > 0.5).astype(int)
-        print(classification_report(y_test, y_pred_binary, target_names=['No Intrusion', 'Intrusion']))
+        # print(classification_report(y_test, y_pred_binary, target_names=['No Intrusion', 'Intrusion']))
         
         conf_mat = confusion_matrix(y_test, y_pred_binary)
     else:
@@ -159,7 +159,7 @@ def load_and_preprocess_test_data(file_path, intended_columns, selected_features
 
 def main():
     """Main execution function."""
-    file_path = 'datasets/50000_5000_IOT112andAllfields_Preprocessed.csv'
+    file_path = 'datasets/Preprocessed_shuffled_train_data.csv'
     # file_path = 'datasets/combined_edgeIIot_500k_custom_DDos.csv'
 
     X, y = load_and_preprocess_data(file_path)
@@ -180,13 +180,18 @@ def main():
     # Test with attack datasets 
     # test_file_path = 'datasets/validation_edgeIIot_500k_custom_DDos.csv'
     # test_file_path = 'datasets/Preprocessed_validation_all_fields.csv'
-    test_file_path = 'datasets/sql_injection_attack_testable.csv'
-
+    test_file_path = 'datasets/Preprocessed_prediction_sql_injection.csv'
+    df_before = pd.read_csv(test_file_path)
     test_df = load_and_preprocess_test_data(test_file_path, selected_features, selected_features)
     X_test_scaled = scaler.transform(test_df)
-    test_df['Attack_label'] = 1
-    y_test = test_df['Attack_label']
+    # test_df['Attack_label'] = 1
+    y_test = df_before['Attack_label']
     evaluate_model(model, X_test_scaled, y_test, 'test')
 
 if __name__ == "__main__":
     main()
+
+
+# 49989:54988
+# 54988:59988
+# 59989:64988

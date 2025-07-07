@@ -17,7 +17,7 @@ from tensorflow.keras.models import load_model
 def load_and_preprocess_data(file_path):
     """Load dataset and preprocess it by mapping attack types and selecting features."""
     df = pd.read_csv(file_path, low_memory=False)
-    df.drop(columns=['Unnamed: 0'], inplace=True)
+    # df.drop(columns=['Unnamed: 0'], inplace=True)
     
     # Mapping attack types to numerical labels
     attacks = {'Normal': 0, 'MITM': 1, 'Uploading': 2, 'Ransomware': 3, 'SQL_injection': 4,
@@ -39,6 +39,7 @@ def feature_selection(X, y):
     chi_scores = pd.DataFrame({'feature': X.columns, 'score': chi_selector.scores_}).dropna()
     chi_scores = chi_scores.sort_values(by='score', ascending=False)
     selected_features = chi_scores['feature'].tolist()
+    print(selected_features)
     
     return selected_features
 
@@ -119,7 +120,9 @@ def evaluate_model(model, X_test, y_test, attacks, state):
     if state == 'test':
         unique_classes = np.unique(y_pred_classes)
         class_names_ordered = [inverse_attacks[i] for i in unique_classes]
-        print(classification_report(y_test, y_pred_classes, target_names=class_names_ordered))
+        # print(classification_report(y_test, y_pred_classes, target_names=class_names_ordered))
+        print(y_pred_classes)
+        print(class_names_ordered)        
         conf_mat = confusion_matrix(y_test, y_pred_classes)
     else:
         class_names_ordered = [attack for attack, number in sorted(attacks.items(), key=lambda item: item[1])]
@@ -171,7 +174,7 @@ def load_and_preprocess_test_data(file_path, intended_columns, selected_features
 def main():
     """Main execution function."""
     # file_path = 'datasets/combined_edgeIIot_500k_custom_DDos.csv'
-    file_path = 'datasets/50000_5000_IOT112andAllfields_Preprocessed.csv'
+    file_path = 'datasets/Preprocessed_shuffled_train_data.csv'
     X, y, attacks = load_and_preprocess_data(file_path)
     selected_features = feature_selection(X, y)
     X_train, X_val, X_test, y_train, y_val, y_test, scaler = prepare_data(X, y, selected_features)
@@ -189,11 +192,17 @@ def main():
 
     # Test with attack datasets 
     # test_file_path = 'datasets/Preprocessed_validation_all_fields.csv'
-    test_file_path = 'datasets/sql_injection_attack_testable.csv'
+    test_file_path = 'datasets/Preprocessed_prediction_sql_injection.csv'
+    df_before = pd.read_csv(test_file_path)
     test_df = load_and_preprocess_test_data(test_file_path, selected_features, selected_features)
     X_test_scaled = scaler.transform(test_df)
-    test_df['Attack_type'] = 6
-    y_test = test_df['Attack_type']
+    attacks = {'Normal': 0, 'MITM': 1, 'Uploading': 2, 'Ransomware': 3, 'SQL_injection': 4,
+               'DDoS_HTTP': 5, 'DDoS_TCP': 6, 'Password': 7, 'Port_Scanning': 8,
+               'Vulnerability_scanner': 9, 'Backdoor': 10, 'XSS': 11, 'Fingerprinting': 12,
+               'DDoS_UDP': 13, 'DDoS_ICMP': 14}
+    df_before['Attack_type'] = df_before['Attack_type'].map(attacks)
+    # test_df['Attack_type'] = 4
+    y_test = df_before['Attack_type']
     evaluate_model(model, X_test_scaled, y_test, attacks, 'test')
 
 if __name__ == "__main__":

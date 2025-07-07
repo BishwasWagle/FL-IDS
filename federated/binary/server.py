@@ -48,9 +48,9 @@ def validate_args(args):
 # Load and preprocess the dataset
 def load_and_preprocess_data(dataset_dir):
     # df = pd.read_csv(os.path.join(dataset_dir, 'combined_edgeIIot_500k_custom_DDos.csv'), low_memory=False)
-    df = pd.read_csv(os.path.join(dataset_dir, '50000_5000_IOT112andAllfields_Preprocessed.csv'), low_memory=False)
-
+    df = pd.read_csv(os.path.join(dataset_dir, 'Preprocessed_shuffled_train_data.csv'), low_memory=False)
     df.drop(columns=['Unnamed: 0'], inplace=True)
+
     
     # Map attack types to numeric labels
     attacks = {'Normal': 0, 'MITM': 1, 'Uploading': 2, 'Ransomware': 3, 'SQL_injection': 4,
@@ -75,7 +75,7 @@ def load_and_preprocess_data(dataset_dir):
     
     # Split data into training and testing sets
     train_set = df[selected_features + ['Attack_label', 'Attack_type']]
-    test_set = df[selected_features + ['Attack_label', 'Attack_type']][50000:]
+    test_set = df[selected_features + ['Attack_label', 'Attack_type']][49990:]
     directory = os.path.join('../federated_datasets')
     try:
         os.makedirs(directory)
@@ -262,66 +262,66 @@ if __name__ == "__main__":
     main()
 
 
-/Applications/Wireshark.app/Contents/MacOS/tshark -r sql_injection.pcap -T fields \
-  -e frame.time \
-  -e ip.src \
-  -e ip.dst \
-  -e arp.dst.proto_ipv4 \
-  -e arp.opcode \
-  -e arp.hw.size \
-  -e arp.src.proto_ipv4 \
-  -e icmp.checksum \
-  -e icmp.seq_le \
-  -e icmp.transmit_timestamp \
-  -e icmp.unused \
-  -e http.file_data \
-  -e http.content_length \
-  -e http.request.uri.query \
-  -e http.request.method \
-  -e http.referer \
-  -e http.request.full_uri \
-  -e http.request.version \
-  -e http.response \
-  -e http.tls_port \
-  -e tcp.ack \
-  -e tcp.ack_raw \
-  -e tcp.checksum \
-  -e tcp.connection.fin \
-  -e tcp.connection.rst \
-  -e tcp.connection.syn \
-  -e tcp.connection.synack \
-  -e tcp.dstport \
-  -e tcp.flags \
-  -e tcp.flags.ack \
-  -e tcp.len \
-  -e tcp.options \
-  -e tcp.payload \
-  -e tcp.seq \
-  -e tcp.srcport \
-  -e udp.port \
-  -e udp.stream \
-  -e udp.time_delta \
-  -e dns.qry.name \
-  -e dns.qry.name.len \
-  -e dns.qry.qu \
-  -e dns.qry.type \
-  -e dns.retransmission \
-  -e dns.retransmit_request \
-  -e dns.retransmit_request_in \
-  -e mqtt.conack.flags \
-  -e mqtt.conflag.cleansess \
-  -e mqtt.conflags \
-  -e mqtt.hdrflags \
-  -e mqtt.len \
-  -e mqtt.msg_decoded_as \
-  -e mqtt.msg \
-  -e mqtt.msgtype \
-  -e mqtt.proto_len \
-  -e mqtt.protoname \
-  -e mqtt.topic \
-  -e mqtt.topic_len \
-  -e mqtt.ver \
-  -e mbtcp.len \
-  -e mbtcp.trans_id \
-  -e mbtcp.unit_id \
-  -E header=y -E separator=, -E quote=d > sql_injection_attack.csv
+# /Applications/Wireshark.app/Contents/MacOS/tshark -r ddos_http_attack.pcap -c 5000 -T fields \
+#   -e frame.time \
+#   -e ip.src_host \
+#   -e ip.dst_host \
+#   -e arp.dst.proto_ipv4 \
+#   -e arp.opcode \
+#   -e arp.hw.size \
+#   -e arp.src.proto_ipv4 \
+#   -e icmp.checksum \
+#   -e icmp.seq_le \
+#   -e icmp.transmit_timestamp \
+#   -e icmp.unused \
+#   -e http.file_data \
+#   -e http.content_length \
+#   -e http.request.uri.query \
+#   -e http.request.method \
+#   -e http.referer \
+#   -e http.request.full_uri \
+#   -e http.request.version \
+#   -e http.response \
+#   -e http.tls_port \
+#   -e tcp.ack \
+#   -e tcp.ack_raw \
+#   -e tcp.checksum \
+#   -e tcp.connection.fin \
+#   -e tcp.connection.rst \
+#   -e tcp.connection.syn \
+#   -e tcp.connection.synack \
+#   -e tcp.dstport \
+#   -e tcp.flags \
+#   -e tcp.flags.ack \
+#   -e tcp.len \
+#   -e tcp.options \
+#   -e tcp.payload \
+#   -e tcp.seq \
+#   -e tcp.srcport \
+#   -e udp.port \
+#   -e udp.stream \
+#   -e udp.time_delta \
+#   -e dns.qry.name \
+#   -e dns.qry.name.len \
+#   -e dns.qry.qu \
+#   -e dns.qry.type \
+#   -e dns.retransmission \
+#   -e dns.retransmit_request \
+#   -e dns.retransmit_request_in \
+#   -e mqtt.conack.flags \
+#   -e mqtt.conflag.cleansess \
+#   -e mqtt.conflags \
+#   -e mqtt.hdrflags \
+#   -e mqtt.len \
+#   -e mqtt.msg_decoded_as \
+#   -e mqtt.msg \
+#   -e mqtt.msgtype \
+#   -e mqtt.proto_len \
+#   -e mqtt.protoname \
+#   -e mqtt.topic \
+#   -e mqtt.topic_len \
+#   -e mqtt.ver \
+#   -e mbtcp.len \
+#   -e mbtcp.trans_id \
+#   -e mbtcp.unit_id \
+#   -E header=y -E separator=, -E quote=d > ddos_icmp_attack.csv
