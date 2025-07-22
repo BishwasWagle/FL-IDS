@@ -10,17 +10,19 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 from typing import Dict
-from sklearn.metrics import f1_score, classification_report, confusion_matrix
+from sklearn.metrics import f1_score, classification_report, confusion_matrix, recall_score, precision_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Conv1D, MaxPooling1D, Flatten, LSTM, GRU
+from tensorflow.keras.layers import Dense, Dropout, Conv1D, MaxPooling1D, Flatten, LSTM, GRU, Input
+
 import flwr as fl
 
 def cnn_lstm_gru_model(input_shape, num_classes):
     model = Sequential([
-        Conv1D(filters=32, kernel_size=3, activation='relu', input_shape=input_shape),        
+        Input(shape=input_shape),
+        Conv1D(filters=32, kernel_size=3, activation='relu'),        
         MaxPooling1D(pool_size=2),
         
         Conv1D(filters=64, kernel_size=3, activation='relu'),
@@ -81,7 +83,7 @@ if __name__ == "__main__":
 
     # Load train and test data
     df_train = pd.read_csv(os.path.join(args.dataset, f'client_train_data_{args.id}.csv'))
-    df_test = pd.read_csv(os.path.join(args.dataset, 'Preprocessed_prediction_sql_injection.csv'))
+    df_test = pd.read_csv(os.path.join(args.dataset, 'test_data.csv'))
 
     X = df_train.drop(columns=['Attack_label', 'Attack_type'])
     y = df_train['Attack_label']
@@ -115,7 +117,8 @@ if __name__ == "__main__":
         def evaluate(self, parameters: fl.common.NDArrays, config: Dict[str, fl.common.Scalar]):
             model.set_weights(parameters)
             test_start_time = time.time()
-            df_test.drop(columns=['Unnamed: 0'], inplace=True)
+            if 'Unnamed: 0' in df_test.columns:
+                df_test.drop(columns=['Unnamed: 0'], inplace=True)
         
             y_test = df_test['Attack_label']
             X_test = df_test.drop(columns=['Attack_label', 'Attack_type'])
@@ -125,6 +128,8 @@ if __name__ == "__main__":
             loss, accuracy = model.evaluate(X_test, y_test, batch_size=32)
             y_pred = model.predict(X_test)
             f1 = f1_score(y_test, np.round(y_pred), average='weighted')
+            precision = precision_score(y_test, np.round(y_pred), average='weighted')
+            recall = recall_score(y_test, np.round(y_pred), average='weighted')
             test_end_time = time.time()
             print(f"Testing time: {test_end_time - test_start_time:.2f} seconds")
             # print(classification_report(y_test, np.round(y_pred), target_names=['No Intrusion', 'Intrusion']))
@@ -145,12 +150,16 @@ if __name__ == "__main__":
             plt.title('Normalized Confusion Matrix as Percentages')
             plt.savefig(f'../../results/federated/binary/con_percent_client{args.id}.jpg')
             plt.close()
-            intrusion_percentage = conf_mat[1, 1] / np.sum(conf_mat[1, :])
+            # intrusion_percentage = conf_mat[1, 1] / np.sum(conf_mat[1, :])
             # print(intrusion_percentage, "************************")
-            if intrusion_percentage >= 0.7:
-                print("70% or more intrusion detected. Notifying server.")
-				# Notify the server
-                return loss, len(X_test), {"accuracy": accuracy, "f1_score": f1, "high_intrusion": True}
-            return loss, len(X_test), {"accuracy": accuracy, "f1_score": f1, "high_intrusion": True}
+            # if intrusion_percentage >= 0.7:
+            #     print("70% or more intrusion detected. Notifying server.")
+			# 	# Notify the server
+            #     return loss, len(X_test), {"accuracy": accuracy, "f1_score": f1, "high_intrusion": True}
+            return loss, len(X_test), {"accuracy": accuracy, "f1_score": f1, "recall": recall, "precision": precision}
                 
-    fl.client.start_numpy_client(server_address=f"{args.address}:{args.port}", client=Client())
+    # fl.client.start_numpy_client(server_address=f"{args.address}:{args.port}", client=Client())
+    fl.client.start_client(
+    server_address=f"{args.address}:{args.port}",
+    client=Client().to_client()
+)
