@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.feature_selection import SelectKBest, chi2
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, precision_score, recall_score
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Conv1D, MaxPooling1D, LSTM, GRU, Flatten
 from typing import Dict
@@ -23,7 +23,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Flower aggregator server implementation')
     parser.add_argument("-a", "--address", help="IP address", default="0.0.0.0")
     parser.add_argument("-p", "--port", help="Serving port", default=8000, type=int)
-    parser.add_argument("-r", "--rounds", help="Number of training and aggregation rounds", default=1, type=int)
+    parser.add_argument("-r", "--rounds", help="Number of training and aggregation rounds", default=2, type=int)
     parser.add_argument("-d", "--dataset", help="dataset directory", default="../federated_datasets/")
     return parser.parse_args()
 
@@ -92,7 +92,7 @@ def load_and_preprocess_data(dataset_dir):
 
 
 # Function to distribute data across clients
-def distribute_data(train_set, n_workers=3):
+def distribute_data(train_set, n_workers=2):
     directory = '../federated_datasets'
     os.makedirs(directory, exist_ok=True)
     
@@ -167,9 +167,13 @@ def fit_round(server_round: int) -> Dict:
 def get_evaluate_fn(model, X_test, y_test):
     def evaluate(server_round, parameters, config):
         model.set_weights(parameters)
+        print(config)
+        print(parameters)
         loss, accuracy = model.evaluate(X_test, y_test, batch_size=32)
         f1 = f1_score(y_test, np.argmax(model.predict(X_test), axis=1), average='weighted')
-        return loss, {"accuracy": accuracy, "f1-score": f1}
+        precision = precision_score(y_test, np.argmax(model.predict(X_test), axis=1), average='weighted')
+        recall = recall_score(y_test, np.argmax(model.predict(X_test), axis=1), average='weighted')
+        return loss, {"accuracy": accuracy, "f1-score": f1, "precision": precision, "recall": recall}
     
     return evaluate
 
@@ -178,24 +182,51 @@ from flwr.common import FitIns, Parameters
 class CustomFedAvg(fl.server.strategy.FedAvg):
     new_results = []
     bad_clients = []
+    # def aggregate_evaluate(self, rnd, results, failures):
+    #     """Filter out clients where intrusion detection rate > 70%"""
+    #     print(rnd, results, failures)
+    #     for client, eval_res in results:  # Unpack properly
+    #         metrics = eval_res.metrics  # Extract metrics from EvaluateRes
+
+    #         # if metrics.get("high_intrusion", False):  # Safely get the boolean value
+    #         #     # self.new_results.append((eval_res.parameters, eval_res.num_examples, metrics))
+    #         #     self.bad_clients.append(client.cid)
+    #         #     print(f"⚠️ Client {client.cid} exceeds 70% intrusion detection. Removing from next rounds.")
+    #         # else:
+    #         #     self.new_results.append((client, eval_res))  
+    #         self.new_results.append((client, eval_res))  
+
+
+    #     return super().aggregate_evaluate(rnd, self.new_results, failures)
     def aggregate_evaluate(self, rnd, results, failures):
-        """Filter out clients where intrusion detection rate > 70%"""
-        print(rnd, results, failures)
-        for client, eval_res in results:  # Unpack properly
-            metrics = eval_res.metrics  # Extract metrics from EvaluateRes
+    # First: use client metrics to do meaningful aggregation
+        total_samples = 0
+        total_loss = 0.0
+        metrics_accum = {"accuracy": 0.0, "f1_score": 0.0, "precision": 0.0, "recall": 0.0}
 
-            if metrics.get("high_intrusion", False):  # Safely get the boolean value
-                # self.new_results.append((eval_res.parameters, eval_res.num_examples, metrics))
-                self.bad_clients.append(client.cid)
-                print(f"⚠️ Client {client.cid} exceeds 70% intrusion detection. Removing from next rounds.")
-            else:
-                self.new_results.append((client, eval_res))  
+        for client, eval_res in results:
+            num_examples = eval_res.num_examples
+            metrics = eval_res.metrics
+            total_samples += num_examples
+            total_loss += eval_res.loss * num_examples
+            for key in metrics_accum:
+                metrics_accum[key] += metrics[key] * num_examples
 
-        return super().aggregate_evaluate(rnd, self.new_results, failures)
+        avg_loss = total_loss / total_samples
+        avg_metrics = {k: v / total_samples for k, v in metrics_accum.items()}
+
+        print(f"[Round {rnd}] Aggregated client metrics:")
+        print(avg_metrics)
+
+        # Optionally: compare to centralized eval
+        # centralized_loss, centralized_metrics = get_evaluate_fn(self.model, X_test, y_test)(rnd, model.get_weights(), {})
+        # print(f"[Round {rnd}] Centralized eval: {centralized_metrics}")
+
+        return avg_loss, avg_metrics
 
     def configure_fit(self, server_round, parameters, client_manager):
         """Modify client selection to exclude flagged clients"""
-        clients = client_manager.sample(num_clients=3)  # Sample 5 clients
+        clients = client_manager.sample(num_clients=2)  # Sample 5 clients
         available_clients = [c for c in clients if c.cid not in self.bad_clients]
         fit_ins = FitIns(Parameters(tensors=parameters.tensors, tensor_type="numpy"), {})
         
@@ -212,11 +243,11 @@ def start_federated_learning_server(args, model, X_test, y_test):
     #     on_fit_config_fn=fit_round,
     # )
     strategy = CustomFedAvg(
-    fraction_fit=0.5,  # Select 50% of clients per round
+    fraction_fit=1.0,  # Select 50% of clients per round
     min_fit_clients=2,
     min_evaluate_clients=2,
     min_available_clients=2,
-    evaluate_fn=get_evaluate_fn(model, X_test, y_test),
+    # evaluate_fn=get_evaluate_fn(model, X_test, y_test),
     on_fit_config_fn=fit_round,
 )
     fl.server.start_server(
