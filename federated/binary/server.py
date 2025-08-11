@@ -23,7 +23,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Flower aggregator server implementation')
     parser.add_argument("-a", "--address", help="IP address", default="0.0.0.0")
     parser.add_argument("-p", "--port", help="Serving port", default=8000, type=int)
-    parser.add_argument("-r", "--rounds", help="Number of training and aggregation rounds", default=2, type=int)
+    parser.add_argument("-r", "--rounds", help="Number of training and aggregation rounds", default=1, type=int)
     parser.add_argument("-d", "--dataset", help="dataset directory", default="../federated_datasets/")
     return parser.parse_args()
 
